@@ -22,17 +22,6 @@ module MyApp
 import Http
 import Encoding.Json
 """
-        , test "module + imports + a single expression" <|
-            \_ ->
-                expectParseAndFormat """
-module MyApp
-
-import Http
-
-
-a =
-    10
-"""
         ]
 
 
@@ -45,10 +34,6 @@ expectParseAndFormat code =
         formatted =
             case parsed of
                 Ok data ->
-                    let
-                        _ =
-                            Debug.log "data" data
-                    in
                     Just (formatModule data)
 
                 Err err ->

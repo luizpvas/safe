@@ -2,12 +2,6 @@
 
 Goals of the t4d language:
 
-## Abstract goals
-
-* Make impossible states impossible
-* Awareness of external constraints
-* Great performance & scalable
-
-## Concrete goals 
-
-* Infer the return type of a SQL query
+* Make impossible states impossible tm
+* Awareness of external constraints (typed SQL queries)
+* Great performance & scalable & builtin serverless deployment

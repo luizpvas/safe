@@ -1,6 +1,6 @@
-module Compiler.Formatter exposing (formatImport, formatModule)
+module Compiler.Formatter exposing (formatExpression, formatImport, formatModule)
 
-import Compiler.Expression exposing (Expression(..))
+import Compiler.Expression exposing (Expression, ExpressionType(..))
 import Compiler.Function exposing (Function)
 import Compiler.Module exposing (Import, Module)
 
@@ -12,17 +12,33 @@ formatModule module_ =
             "module " ++ module_.name
 
         imports =
-            List.map formatImport module_.imports |> String.join "\n"
+            List.map formatImport module_.imports
 
         functions =
-            List.map formatFunction module_.functions |> String.join "\n\n"
-    in
-    case imports of
-        "" ->
-            moduleDeclaration
+            List.map formatFunction module_.functions
 
-        _ ->
-            String.join "\n\n" [ moduleDeclaration, imports, functions ]
+        hasImports =
+            not (List.isEmpty imports)
+
+        hasFunctions =
+            not (List.isEmpty functions)
+    in
+    String.join ""
+        [ moduleDeclaration
+        , breakIf hasImports "\n\n"
+        , imports |> String.join "\n"
+        , breakIf hasFunctions "\n\n\n"
+        , functions |> String.join "\n\n\n"
+        ]
+
+
+breakIf : Bool -> String -> String
+breakIf condition break =
+    if condition then
+        break
+
+    else
+        ""
 
 
 formatImport : Import -> String
@@ -37,9 +53,36 @@ formatFunction function =
 
 formatExpression : Expression -> String
 formatExpression expr =
-    case expr of
-        LiteralInt n ->
-            String.fromInt n
+    let
+        ( before, after ) =
+            if expr.precedence then
+                ( "(", ")" )
 
-        LiteralString str ->
-            "\"" ++ str ++ "\""
+            else
+                ( "", "" )
+
+        formatted =
+            case expr.value of
+                LiteralInt n ->
+                    String.fromInt n
+
+                LiteralFloat n ->
+                    String.fromFloat n
+
+                LiteralString str ->
+                    "\"" ++ str ++ "\""
+
+                Plus expr1 expr2 ->
+                    formatExpression expr1 ++ " + " ++ formatExpression expr2
+
+                Minus expr1 expr2 ->
+                    formatExpression expr1 ++ " - " ++ formatExpression expr2
+
+                FunctionCall name args ->
+                    if List.isEmpty args then
+                        name
+
+                    else
+                        name ++ " " ++ String.join " " (List.map formatExpression args)
+    in
+    before ++ formatted ++ after
