@@ -2,8 +2,8 @@ module Encoding.Json exposing (..)
 
 
 interface Encodable a =
-    encode : a -> Value
+    toJson : a -> Value
 
 
 interface Decodable a =
-    decode : Value -> Result String a
+    fromJson : Value -> Result String a

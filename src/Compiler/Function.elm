@@ -1,11 +1,11 @@
 module Compiler.Function exposing (Function)
 
-import Compiler.Expression exposing (Expression)
+import Compiler.Expression exposing (LocatedExpression)
 
 
 type alias Function =
     { name : String
     , arguments : List String
-    , expressions : List Expression
-    , lastExpression : Expression
+    , expressions : List LocatedExpression
+    , lastExpression : LocatedExpression
     }

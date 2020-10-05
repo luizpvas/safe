@@ -1,6 +1,6 @@
 module Compiler.Parser exposing (parse)
 
-import Compiler.Expression exposing (Expression)
+import Compiler.Expression exposing (LocatedExpression)
 import Compiler.Function exposing (Function)
 import Compiler.Module exposing (Import, Module)
 import Parser exposing (..)

@@ -1,4 +1,4 @@
-module Compiler.Expression exposing (Expression, ExpressionType(..), parser)
+module Compiler.Expression exposing (Expression(..), LocatedExpression, parser)
 
 import Compiler.Located as Located exposing (Located)
 import Compiler.Parser.DoubleQuotedString as DoubleQuotedString
@@ -11,25 +11,26 @@ type Operator
     | OpMinus
 
 
-type alias Expression =
-    Located ExpressionType
+type alias LocatedExpression =
+    Located Expression
 
 
-type ExpressionType
+type Expression
     = LiteralString String
     | LiteralInt Int
     | LiteralFloat Float
-    | Plus Expression Expression
-    | Minus Expression Expression
-    | FunctionCall String (List Expression)
+    | LiteralList (List LocatedExpression)
+    | Plus LocatedExpression LocatedExpression
+    | Minus LocatedExpression LocatedExpression
+    | FunctionCall String (List LocatedExpression)
 
 
-parser : Parser Expression
+parser : Parser LocatedExpression
 parser =
     term |> andThen (expressionHelp [])
 
 
-expressionHelp : List ( Expression, Operator ) -> Expression -> Parser Expression
+expressionHelp : List ( LocatedExpression, Operator ) -> LocatedExpression -> Parser LocatedExpression
 expressionHelp revOps expr =
     oneOf
         [ succeed Tuple.pair
@@ -42,12 +43,13 @@ expressionHelp revOps expr =
         ]
 
 
-term : Parser Expression
+term : Parser LocatedExpression
 term =
     oneOf
-        [ Located.map False digits
-        , Located.map False stringLiteral
+        [ Located.locate digits
+        , Located.locate stringLiteral
         , functionCall
+        , Located.locate (map LiteralList literalList)
         , succeed (\expression -> { expression | precedence = True })
             |. symbol "("
             |. spaces
@@ -57,7 +59,19 @@ term =
         ]
 
 
-digits : Parser ExpressionType
+literalList : Parser (List LocatedExpression)
+literalList =
+    sequence
+        { start = "["
+        , separator = ","
+        , end = "]"
+        , spaces = spaces
+        , item = lazy (\_ -> parser)
+        , trailing = Parser.Forbidden
+        }
+
+
+digits : Parser Expression
 digits =
     number
         { int = Just LiteralInt
@@ -68,7 +82,7 @@ digits =
         }
 
 
-stringLiteral : Parser ExpressionType
+stringLiteral : Parser Expression
 stringLiteral =
     map LiteralString DoubleQuotedString.parser
 
@@ -81,7 +95,7 @@ operator =
         ]
 
 
-finalize : List ( Expression, Operator ) -> Expression -> Expression
+finalize : List ( LocatedExpression, Operator ) -> LocatedExpression -> LocatedExpression
 finalize revOps finalExpr =
     case revOps of
         [] ->
@@ -94,10 +108,10 @@ finalize revOps finalExpr =
             finalize otherRevOps (Located.wrap expr finalExpr (Minus expr finalExpr))
 
 
-functionCall : Parser Expression
+functionCall : Parser LocatedExpression
 functionCall =
     functionCallIdentifier
-        |> andThen (argumentsHelp [])
+        |> andThen (functionArguments [])
         |> map
             (\( name, args ) ->
                 { precedence = False
@@ -108,27 +122,27 @@ functionCall =
             )
 
 
-argumentsHelp : List Expression -> Located String -> Parser ( Located String, List Expression )
-argumentsHelp args functionName =
+functionArguments : List LocatedExpression -> Located String -> Parser ( Located String, List LocatedExpression )
+functionArguments args fname =
     oneOf
         [ succeed identity
             |. spaces
             |= term
-            |> andThen (\expr -> argumentsHelp (expr :: args) functionName)
-        , lazy (\_ -> succeed ( functionName, args ))
+            |> andThen (\expr -> functionArguments (expr :: args) fname)
+        , lazy (\_ -> succeed ( fname, args ))
         ]
 
 
 functionCallIdentifier : Parser (Located String)
 functionCallIdentifier =
     oneOf
-        [ Located.map False variableName
-        , Located.map False moduleName
+        [ Located.locate functionName
+        , Located.locate qualifiedModuleNameEndingInFunctionName
         ]
 
 
-variableName : Parser String
-variableName =
+functionName : Parser String
+functionName =
     variable
         { start = \c -> Char.isAlpha c && Char.isLower c
         , inner = \c -> Char.isAlphaNum c
@@ -136,8 +150,8 @@ variableName =
         }
 
 
-moduleName : Parser String
-moduleName =
+qualifiedModuleNameEndingInFunctionName : Parser String
+qualifiedModuleNameEndingInFunctionName =
     variable
         { start = \c -> Char.isAlpha c && Char.isUpper c
         , inner = \c -> Char.isAlphaNum c || c == '.'

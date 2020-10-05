@@ -1,4 +1,4 @@
-module Compiler.Located exposing (Located, map, wrap)
+module Compiler.Located exposing (Located, copy, locate, locateWithPrecedence, map, wrap)
 
 import Parser exposing (..)
 
@@ -23,12 +23,38 @@ type alias Located a =
     }
 
 
-map : Bool -> Parser a -> Parser (Located a)
-map wrapped parser =
-    succeed (Located wrapped)
+locate : Parser a -> Parser (Located a)
+locate parser =
+    succeed (Located False)
         |= getPosition
         |= parser
         |= getPosition
+
+
+locateWithPrecedence : Parser a -> Parser (Located a)
+locateWithPrecedence parser =
+    succeed (Located True)
+        |= getPosition
+        |= parser
+        |= getPosition
+
+
+copy : Located a -> b -> Located b
+copy located newValue =
+    { precedence = located.precedence
+    , start = located.start
+    , value = newValue
+    , end = located.end
+    }
+
+
+map : (a -> b) -> Located a -> Located b
+map function located =
+    { precedence = located.precedence
+    , start = located.start
+    , value = function located.value
+    , end = located.end
+    }
 
 
 wrap : Located a -> Located a -> a -> Located a

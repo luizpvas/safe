@@ -52,9 +52,12 @@ suite =
         , test "function call with nested call" <|
             \_ ->
                 expectParseAndFormat "myFunction (myOtherFunction 10)"
-        , test "function call with qualified name with another function as arg" <|
+        , test "function call with qualified name with partially applied function as arg" <|
             \_ ->
                 expectParseAndFormat "List.map (add 10) myList"
+        , test "function call with literal list" <|
+            \_ ->
+                expectParseAndFormat "List.map (add 10) [1, 2, 3]"
         ]
 
 
